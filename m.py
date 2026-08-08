@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """m.py [-u] [키워드...]                  검색 (-u: 아직 안 본 것만, 인자 없으면 전체)
 m.py add 제목 감독 연도 OTT 설명 URL     추가
-m.py seen 키워드                         본 것으로 표시
+m.py seen [--month YYYY-MM] 키워드       본 것으로 표시 (달 미지정 시 이번 달 기록)
 m.py csv                                 movies.csv로 내보내기 (엑셀용)
 m.py html                                index.html 생성 (GitHub Pages용 자체완결 페이지)"""
 import sqlite3, sys, os, csv, json, datetime
@@ -23,7 +23,7 @@ def where(words, unwatched):
 def search(con, words, unwatched=False):
     # ponytail: LIKE 풀스캔. 수천 편 넘어가서 느려지면 FTS5로.
     w, args = where(words, unwatched)
-    sql = "SELECT title, director, year, ott, description, url, watched FROM movies"
+    sql = "SELECT title, director, year, ott, description, url, watched, seen_month FROM movies"
     return con.execute(sql + w + " ORDER BY id DESC", args).fetchall()
 
 
@@ -45,11 +45,17 @@ h1{font-size:22px;margin:0 0 2px}
 .tabs{display:flex;gap:6px}
 .tab{padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--card);color:var(--fg);cursor:pointer;font-size:14px;white-space:nowrap}
 .tab.on{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.ott{display:flex;gap:10px;flex-wrap:wrap;margin:-4px 0 16px}
+.ott button{width:42px;height:42px;padding:0;border:none;background:none;cursor:pointer;border-radius:50%;line-height:0;opacity:.88;transition:transform .1s,opacity .1s}
+.ott button:hover{transform:scale(1.08);opacity:1}
+.ott button.on{outline:2px solid var(--fg);outline-offset:2px;opacity:1}
+.ott img{width:42px;height:42px;display:block}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
 .card.seen{opacity:.62}
 .t{font-weight:600;font-size:17px}
 .t .chk{color:var(--seen);margin-right:5px}
 .sub{color:var(--dim);font-size:13px;margin:3px 0 0}
+.mon{color:var(--seen)}
 .desc{font-size:14px;margin:8px 0 0}
 .card a{font-size:13px;color:#3b82f6;text-decoration:none;word-break:break-all}
 .empty{color:var(--dim);text-align:center;padding:40px}
@@ -63,6 +69,13 @@ h1{font-size:22px;margin:0 0 2px}
     <button class="tab" data-m="all">전체</button>
     <button class="tab" data-m="seen">본 것</button>
   </div>
+</div>
+<div class="ott">
+  <button data-kw="넷플릭스" title="넷플릭스"><img src="icons/netflix.png" alt="넷플릭스"></button>
+  <button data-kw="왓챠" title="왓챠"><img src="icons/watcha.png" alt="왓챠"></button>
+  <button data-kw="웨이브" title="웨이브"><img src="icons/wavve.png" alt="웨이브"></button>
+  <button data-kw="쿠팡" title="쿠팡플레이"><img src="icons/coupangplay.png" alt="쿠팡플레이"></button>
+  <button data-kw="디즈니" title="디즈니+"><img src="icons/disneyplus.png" alt="디즈니+"></button>
 </div>
 <div id="list"></div>
 <script>
@@ -83,7 +96,7 @@ function draw(){
   list.innerHTML=rows.length?rows.map(m=>`
     <div class="card${m.w?' seen':''}">
       <div class="t">${m.w?'<span class="chk">✓</span>':''}${esc(m.t)}</div>
-      <div class="sub">${esc(m.y||'?')} · ${esc(m.d||'?')} · ${esc(m.o||'-')}</div>
+      <div class="sub">${esc(m.y||'?')} · ${esc(m.d||'?')} · ${esc(m.o||'-')}${m.w&&m.mon?` · <span class="mon">👁 ${esc(m.mon)}</span>`:''}</div>
       ${m.desc?`<div class="desc">${esc(m.desc)}</div>`:''}
       ${m.u?`<a href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.u)}</a>`:''}
     </div>`).join(''):'<div class="empty">해당 없음</div>';
@@ -91,16 +104,21 @@ function draw(){
 document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>{
   document.querySelector('.tab.on').classList.remove('on');b.classList.add('on');mode=b.dataset.m;draw();
 });
-q.oninput=draw; draw();
+const ott=document.querySelectorAll('.ott button');
+ott.forEach(b=>b.onclick=()=>{
+  const kw=b.dataset.kw; q.value=(q.value===kw)?'':kw;
+  ott.forEach(x=>x.classList.remove('on')); if(q.value)b.classList.add('on'); draw();
+});
+q.oninput=()=>{ott.forEach(x=>x.classList.remove('on'));draw();}; draw();
 </script>
 </div></body></html>"""
 
 
 def render(con):
-    rows = con.execute("SELECT title,director,year,ott,description,url,watched "
+    rows = con.execute("SELECT title,director,year,ott,description,url,watched,seen_month "
                        "FROM movies ORDER BY watched, id DESC").fetchall()
-    data = [{"t": t, "d": d, "y": y, "o": o, "desc": desc, "u": u, "w": w}
-            for t, d, y, o, desc, u, w in rows]
+    data = [{"t": t, "d": d, "y": y, "o": o, "desc": desc, "u": u, "w": w, "mon": sm}
+            for t, d, y, o, desc, u, w, sm in rows]
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")  # ponytail: </script> 방어
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     return PAGE.replace("__DATA__", payload).replace("__TS__", ts)
@@ -129,16 +147,23 @@ def main():
             f.write(render(con))
         return print(out)
     if argv[:1] == ["seen"]:
+        rest = argv[1:]
+        month = datetime.datetime.now().strftime("%Y-%m")
+        if "--month" in rest:  # 지난 달 소급 기록용
+            i = rest.index("--month"); month = rest[i + 1]; rest = rest[:i] + rest[i + 2:]
+        if not rest:  # 키워드 없으면 where가 비어 전체가 걸림 — 사고 방지
+            return print("키워드를 지정해라 (예: m.py seen 싸이코). 전체 대상 방지.")
         with sqlite3.connect(DB) as con:
-            w, args = where(argv[1:], False)
-            n = con.execute("UPDATE movies SET watched = 1" + w, args).rowcount
-        return print(f"{n}편 본 것으로 표시")
+            w, args = where(rest, False)
+            n = con.execute("UPDATE movies SET watched = 1, seen_month = ?" + w, [month] + args).rowcount
+        return print(f"{n}편 본 것으로 표시 ({month})")
 
     unwatched = "-u" in argv
     rows = search(sqlite3.connect(f"file:{DB}?mode=ro", uri=True),
                   [a for a in argv if a != "-u"], unwatched)
-    for t, d, y, o, desc, url, w in rows:
-        print(f"\n{'✓ ' if w else ''}{t} ({y or '?'})  · {d or '?'} · {o or '-'}")
+    for t, d, y, o, desc, url, w, sm in rows:
+        seen = f" · 본 {sm}" if w and sm else ""
+        print(f"\n{'✓ ' if w else ''}{t} ({y or '?'})  · {d or '?'} · {o or '-'}{seen}")
         if desc:
             print(f"  {desc}")
         if url:
@@ -149,9 +174,9 @@ def main():
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--selftest"]:
         con = sqlite3.connect(":memory:")
-        con.execute("CREATE TABLE movies (id INTEGER PRIMARY KEY, title, director, year, ott, description, url, watched)")
-        con.execute("INSERT INTO movies VALUES (1,'기생충','봉준호',2019,'넷플릭스','계급 스릴러','http://a',0)")
-        con.execute("INSERT INTO movies VALUES (2,'버닝','이창동',2018,'왓챠','미스터리','http://b',1)")
+        con.execute("CREATE TABLE movies (id INTEGER PRIMARY KEY, title, director, year, ott, description, url, watched, seen_month)")
+        con.execute("INSERT INTO movies VALUES (1,'기생충','봉준호',2019,'넷플릭스','계급 스릴러','http://a',0,NULL)")
+        con.execute("INSERT INTO movies VALUES (2,'버닝','이창동',2018,'왓챠','미스터리','http://b',1,'2026-08')")
         assert len(search(con, [])) == 2
         assert search(con, ["봉준호"])[0][0] == "기생충"
         assert search(con, ["스릴러"])[0][0] == "기생충"
