@@ -56,6 +56,14 @@ h1{font-size:22px;margin:0 0 2px}
 .t .chk{color:var(--seen);margin-right:5px}
 .sub{color:var(--dim);font-size:13px;margin:3px 0 0}
 .mon{color:var(--seen)}
+.pend{color:#e0a000;font-weight:600}
+.reg{margin:0 0 16px}
+.reg summary{cursor:pointer;color:var(--dim);font-size:14px;user-select:none}
+.reg form{display:flex;flex-direction:column;gap:8px;margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
+.reg input,.reg textarea{padding:9px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:15px;font-family:inherit}
+.reg textarea{resize:vertical;min-height:44px}
+.reg button{padding:9px;border:none;border-radius:8px;background:var(--fg);color:var(--bg);font-size:15px;cursor:pointer}
+.reg .msg{font-size:13px;color:var(--dim);min-height:1em}
 .desc{font-size:14px;margin:8px 0 0}
 .card a{font-size:13px;color:#3b82f6;text-decoration:none;word-break:break-all}
 .empty{color:var(--dim);text-align:center;padding:40px}
@@ -77,6 +85,16 @@ h1{font-size:22px;margin:0 0 2px}
   <button data-kw="쿠팡" title="쿠팡플레이"><img src="icons/coupangplay.png" alt="쿠팡플레이"></button>
   <button data-kw="디즈니" title="디즈니+"><img src="icons/disneyplus.png" alt="디즈니+"></button>
 </div>
+<details class="reg" id="reg" hidden>
+  <summary>➕ 영화 등록 (대충 적어도 됨)</summary>
+  <form id="regform" autocomplete="on">
+    <input type="password" id="pw" placeholder="비밀번호" autocomplete="current-password" required>
+    <input type="text" id="rt" placeholder="영화 제목 (대충)" required>
+    <textarea id="rn" placeholder="메모 (감독·연도 등 기억나는 대로, 선택)"></textarea>
+    <button type="submit">등록</button>
+    <div class="msg" id="rmsg"></div>
+  </form>
+</details>
 <div id="list"></div>
 <script>
 const DATA=__DATA__, TS="__TS__";
@@ -95,7 +113,7 @@ function draw(){
   meta.textContent=`전체 ${DATA.length} · 본 것 ${seen} · 안 본 것 ${DATA.length-seen}  ·  갱신 ${TS}`;
   list.innerHTML=rows.length?rows.map(m=>`
     <div class="card${m.w?' seen':''}">
-      <div class="t">${m.w?'<span class="chk">✓</span>':''}${esc(m.t)}</div>
+      <div class="t">${m.w?'<span class="chk">✓</span>':''}${esc(m.t)}${m.s==='user'?' <span class="pend">🕗 대기</span>':''}</div>
       <div class="sub">${esc(m.y||'?')} · ${esc(m.d||'?')} · ${esc(m.o||'-')}${m.w&&m.mon?` · <span class="mon">👁 ${esc(m.mon)}</span>`:''}</div>
       ${m.desc?`<div class="desc">${esc(m.desc)}</div>`:''}
       ${m.u?`<a href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.u)}</a>`:''}
@@ -110,18 +128,38 @@ ott.forEach(b=>b.onclick=()=>{
   ott.forEach(x=>x.classList.remove('on')); if(q.value)b.classList.add('on'); draw();
 });
 q.oninput=()=>{ott.forEach(x=>x.classList.remove('on'));draw();}; draw();
+// 등록 폼 — GAS 웹앱으로 전송. no-cors라 응답은 못 읽으므로 낙관적 처리.
+const GAS="__GAS__";
+if(GAS){
+  const reg=document.getElementById('reg'); reg.hidden=false;
+  const pw=document.getElementById('pw'), rt=document.getElementById('rt'), rn=document.getElementById('rn'), rmsg=document.getElementById('rmsg');
+  pw.value=localStorage.getItem('pw')||'';  // ponytail: 브라우저 저장 실패 대비 localStorage로도 채움
+  document.getElementById('regform').onsubmit=async e=>{
+    e.preventDefault();
+    localStorage.setItem('pw',pw.value);
+    rmsg.textContent='전송 중...';
+    try{
+      await fetch(GAS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+        body:JSON.stringify({pw:pw.value,title:rt.value.trim(),note:rn.value.trim()})});
+      rmsg.textContent='✅ 등록됨. 곧 반영됩니다.'; rt.value=''; rn.value='';
+    }catch(_){ rmsg.textContent='❌ 전송 실패. 네트워크 확인.'; }
+  };
+}
 </script>
 </div></body></html>"""
 
 
+GAS_URL = ""  # ponytail: GAS 웹앱 /exec URL. 비면 등록폼 숨김. 배포 후 여기 채우고 html 재생성.
+
+
 def render(con):
-    rows = con.execute("SELECT title,director,year,ott,description,url,watched,seen_month "
+    rows = con.execute("SELECT title,director,year,ott,description,url,watched,seen_month,source "
                        "FROM movies ORDER BY watched, id DESC").fetchall()
-    data = [{"t": t, "d": d, "y": y, "o": o, "desc": desc, "u": u, "w": w, "mon": sm}
-            for t, d, y, o, desc, u, w, sm in rows]
+    data = [{"t": t, "d": d, "y": y, "o": o, "desc": desc, "u": u, "w": w, "mon": sm, "s": src}
+            for t, d, y, o, desc, u, w, sm, src in rows]
     payload = json.dumps(data, ensure_ascii=False).replace("</", "<\\/")  # ponytail: </script> 방어
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
-    return PAGE.replace("__DATA__", payload).replace("__TS__", ts)
+    return PAGE.replace("__DATA__", payload).replace("__TS__", ts).replace("__GAS__", GAS_URL)
 
 
 def main():
@@ -174,9 +212,9 @@ def main():
 if __name__ == "__main__":
     if sys.argv[1:2] == ["--selftest"]:
         con = sqlite3.connect(":memory:")
-        con.execute("CREATE TABLE movies (id INTEGER PRIMARY KEY, title, director, year, ott, description, url, watched, seen_month)")
-        con.execute("INSERT INTO movies VALUES (1,'기생충','봉준호',2019,'넷플릭스','계급 스릴러','http://a',0,NULL)")
-        con.execute("INSERT INTO movies VALUES (2,'버닝','이창동',2018,'왓챠','미스터리','http://b',1,'2026-08')")
+        con.execute("CREATE TABLE movies (id INTEGER PRIMARY KEY, title, director, year, ott, description, url, watched, seen_month, source)")
+        con.execute("INSERT INTO movies VALUES (1,'기생충','봉준호',2019,'넷플릭스','계급 스릴러','http://a',0,NULL,NULL)")
+        con.execute("INSERT INTO movies VALUES (2,'버닝','이창동',2018,'왓챠','미스터리','http://b',1,'2026-08',NULL)")
         assert len(search(con, [])) == 2
         assert search(con, ["봉준호"])[0][0] == "기생충"
         assert search(con, ["스릴러"])[0][0] == "기생충"
