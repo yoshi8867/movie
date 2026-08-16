@@ -12,11 +12,12 @@ function doPost(e) {
     if (String(d.pw) !== PW) return out('bad password');
     const title = (d.title || '').toString().trim();
     if (!title) return out('no title');
+    const action = (d.action === 'done') ? '완료' : '추가';
     const list = (d.list || '영화').toString().trim();
     const ss = SpreadsheetApp.openById(SHEET_ID);
     let sh = ss.getSheetByName('pending');
-    if (!sh) { sh = ss.insertSheet('pending'); sh.appendRow(['시각', '목록', '제목', '메모']); }
-    sh.appendRow([new Date(), list, title, (d.note || '').toString()]);
+    if (!sh) { sh = ss.insertSheet('pending'); sh.appendRow(['시각', '동작', '목록', '제목', '메모']); }
+    sh.appendRow([new Date(), action, list, title, (d.note || '').toString()]);
     return out('ok');
   } catch (err) {
     return out('err: ' + err);

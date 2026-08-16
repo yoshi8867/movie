@@ -63,6 +63,8 @@ h1{font-size:22px;margin:0 0 2px}
 .sub{color:var(--dim);font-size:13px;margin:3px 0 0}
 .mon{color:var(--seen)}
 .pend{color:#e0a000;font-weight:600}
+.done-btn{margin-top:10px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:13px;cursor:pointer}
+.done-btn:hover{background:var(--line)}
 .reg{margin:0 0 16px}
 .reg summary{cursor:pointer;color:var(--dim);font-size:14px;user-select:none}
 .reg form{display:flex;flex-direction:column;gap:8px;margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -163,6 +165,7 @@ function draw(){
         <div class="t">${dn?'<span class="chk">✓</span>':''}${esc(x.t)}${x.s==='user'?' <span class="pend">🕗 대기</span>':''}</div>
         ${x.note?`<div class="desc">${esc(x.note)}</div>`:''}
         <div class="sub">${rd?`등록 ${rd}`:''}${dn&&x.mon?`${rd?' · ':''}<span class="mon">${ic} ${esc(x.mon)}</span>`:''}</div>
+        ${!dn&&GAS?`<button class="done-btn" data-t="${esc(x.t)}">✅ ${curList==='와먹'?'먹었다':'완료'}</button>`:''}
       </div>`;}).join(''):'<div class="empty">해당 없음</div>';
   }
 }
@@ -174,6 +177,15 @@ ott.forEach(b=>b.onclick=()=>{
   ott.forEach(x=>x.classList.remove('on')); if(q.value)b.classList.add('on'); draw();
 });
 q.oninput=()=>{ott.forEach(x=>x.classList.remove('on'));draw();};
+// 완료(먹었다) 처리 — 비번 필요, GAS로 지시 전송 후 내가 반영. 낙관적으로 카드만 즉시 흐리게.
+list.addEventListener('click',e=>{
+  const b=e.target.closest('.done-btn'); if(!b||!GAS)return;
+  const pw=localStorage.getItem('pw')||prompt('비밀번호'); if(!pw)return;
+  localStorage.setItem('pw',pw);
+  fetch(GAS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
+    body:JSON.stringify({pw,action:'done',list:curList,title:b.dataset.t})});
+  b.textContent='✅ 접수됨'; b.disabled=true; b.closest('.card').style.opacity=.4;
+});
 paint();
 
 // 등록 폼 — GAS 웹앱으로 전송. no-cors라 응답은 못 읽으므로 낙관적 처리.
