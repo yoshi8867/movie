@@ -38,6 +38,7 @@ PAGE = r"""<!doctype html>
 :root{--bg:#fafafa;--card:#fff;--line:#e5e5e5;--fg:#1a1a1a;--dim:#888;--seen:#12a150}
 @media(prefers-color-scheme:dark){:root{--bg:#161616;--card:#1f1f1f;--line:#333;--fg:#e8e8e8;--dim:#999;--seen:#3fd67a}}
 *{box-sizing:border-box}
+[hidden]{display:none!important}
 body{margin:0;font:16px/1.5 system-ui,-apple-system,"Segoe UI",sans-serif;background:var(--bg);color:var(--fg)}
 .wrap{max-width:820px;margin:0 auto;padding:20px 16px 60px}
 h1{font-size:22px;margin:0 0 2px}
@@ -157,11 +158,11 @@ function draw(){
       return true;});
     const done=all.filter(x=>x.st==='done').length;
     meta.textContent=`전체 ${all.length} · ${lab(curList)[1]} ${done} · ${lab(curList)[0]} ${all.length-done}  ·  갱신 ${TS}`;
-    list.innerHTML=rows.length?rows.map(x=>{const dn=x.st==='done';return `
+    list.innerHTML=rows.length?rows.map(x=>{const dn=x.st==='done',rd=x.c?x.c.slice(5,10).replace('-','/'):'';return `
       <div class="card${dn?' seen':''}">
         <div class="t">${dn?'<span class="chk">✓</span>':''}${esc(x.t)}${x.s==='user'?' <span class="pend">🕗 대기</span>':''}</div>
         ${x.note?`<div class="desc">${esc(x.note)}</div>`:''}
-        ${dn&&x.mon?`<div class="sub"><span class="mon">${ic} ${esc(x.mon)}</span></div>`:''}
+        <div class="sub">${rd?`등록 ${rd}`:''}${dn&&x.mon?`${rd?' · ':''}<span class="mon">${ic} ${esc(x.mon)}</span>`:''}</div>
       </div>`;}).join(''):'<div class="empty">해당 없음</div>';
   }
 }
@@ -204,10 +205,10 @@ def render(con):
                        "FROM movies ORDER BY watched, id DESC").fetchall()
     data = [{"t": t, "d": d, "y": y, "o": o, "desc": desc, "u": u, "w": w, "mon": sm, "s": src}
             for t, d, y, o, desc, u, w, sm, src in rows]
-    irows = con.execute("SELECT list,title,note,status,done_month,source "
+    irows = con.execute("SELECT list,title,note,status,done_month,source,created_at "
                         "FROM items ORDER BY status DESC, id DESC").fetchall()
-    items = [{"l": l, "t": t, "note": n, "st": st, "mon": dm, "s": src}
-             for l, t, n, st, dm, src in irows]
+    items = [{"l": l, "t": t, "note": n, "st": st, "mon": dm, "s": src, "c": c}
+             for l, t, n, st, dm, src, c in irows]
     j = lambda x: json.dumps(x, ensure_ascii=False).replace("</", "<\\/")  # ponytail: </script> 방어
     ts = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
     return (PAGE.replace("__DATA__", j(data)).replace("__ITEMS__", j(items))
