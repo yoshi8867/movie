@@ -25,3 +25,20 @@ function doPost(e) {
 }
 
 function out(s) { return ContentService.createTextOutput(s); }
+
+// 페이지가 pending을 실시간으로 읽어 오버레이. JSONP(?callback=)로 CORS 우회.
+function doGet(e) {
+  const cb = (e && e.parameter && e.parameter.callback) || 'cb';
+  const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName('pending');
+  let rows = [];
+  if (sh && sh.getLastRow() > 1) {
+    rows = sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues().map(function (r) {
+      return {
+        ts: (r[0] instanceof Date) ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss') : String(r[0]),
+        act: String(r[1]), list: String(r[2]), title: String(r[3]), note: String(r[4])
+      };
+    });
+  }
+  return ContentService.createTextOutput(cb + '(' + JSON.stringify(rows) + ')')
+    .setMimeType(ContentService.MimeType.JAVASCRIPT);
+}

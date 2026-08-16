@@ -149,6 +149,7 @@ function draw(){
         <div class="sub">${esc(m.y||'?')} · ${esc(m.d||'?')} · ${esc(m.o||'-')}${m.w&&m.mon?` · <span class="mon">👁 ${esc(m.mon)}</span>`:''}</div>
         ${m.desc?`<div class="desc">${esc(m.desc)}</div>`:''}
         ${m.u?`<a href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.u)}</a>`:''}
+        ${!m.w&&GAS?`<div><button class="done-btn" data-t="${esc(m.t)}">✅ 봤다</button></div>`:''}
       </div>`).join(''):'<div class="empty">해당 없음</div>';
   }else{
     const ic=lab(curList)[2], all=ITEMS.filter(x=>x.l===curList);
@@ -177,16 +178,33 @@ ott.forEach(b=>b.onclick=()=>{
   ott.forEach(x=>x.classList.remove('on')); if(q.value)b.classList.add('on'); draw();
 });
 q.oninput=()=>{ott.forEach(x=>x.classList.remove('on'));draw();};
-// 완료(먹었다) 처리 — 비번 필요, GAS로 지시 전송 후 내가 반영. 낙관적으로 카드만 즉시 흐리게.
+// 완료(봤다/먹었다) — 비번 필요. 로컬 즉시 반영 + GAS로 지시 전송(백그라운드 정식화용).
+const nowMon=()=>new Date().toISOString().slice(0,7);  // YYYY-MM (UTC, 표시용이라 무방)
+function localDone(lst,title){
+  if(lst==='영화'){const m=DATA.find(m=>m.t===title);if(m){m.w=1;m.mon=m.mon||nowMon();}}
+  else{const x=ITEMS.find(x=>x.l===lst&&x.t===title);if(x){x.st='done';x.mon=x.mon||nowMon();}}
+}
 list.addEventListener('click',e=>{
   const b=e.target.closest('.done-btn'); if(!b||!GAS)return;
   const pw=localStorage.getItem('pw')||prompt('비밀번호'); if(!pw)return;
   localStorage.setItem('pw',pw);
   fetch(GAS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
     body:JSON.stringify({pw,action:'done',list:curList,title:b.dataset.t})});
-  b.textContent='✅ 접수됨'; b.disabled=true; b.closest('.card').style.opacity=.4;
+  localDone(curList,b.dataset.t); draw();
 });
 paint();
+// pending 실시간 오버레이 — 다른 기기/새로고침에서도 최신 상태 보이게 GAS에서 읽어와 겹침.
+if(GAS){
+  window.__ov=rows=>{
+    (rows||[]).forEach(r=>{
+      if(r.act==='완료'){ localDone(r.list,r.title); }
+      else if(r.list==='영화'){ if(!DATA.some(m=>m.t===r.title))DATA.unshift({t:r.title,desc:r.note,w:0,s:'user'}); }
+      else if(!ITEMS.some(x=>x.l===r.list&&x.t===r.title)){ ITEMS.unshift({l:r.list,t:r.title,note:r.note,st:'want',s:'user',c:r.ts}); }
+    });
+    draw();
+  };
+  const sc=document.createElement('script'); sc.src=GAS+'?callback=__ov'; document.body.appendChild(sc);
+}
 
 // 등록 폼 — GAS 웹앱으로 전송. no-cors라 응답은 못 읽으므로 낙관적 처리.
 if(GAS){
@@ -197,11 +215,16 @@ if(GAS){
   $('regform').onsubmit=async e=>{
     e.preventDefault();
     localStorage.setItem('pw',pw.value);
+    const lst=rl.value, title=rt.value.trim(), note=rn.value.trim();
     rmsg.textContent='전송 중...';
     try{
       await fetch(GAS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-        body:JSON.stringify({pw:pw.value,list:rl.value,title:rt.value.trim(),note:rn.value.trim()})});
-      rmsg.textContent='✅ 등록됨. 곧 반영됩니다.'; rt.value=''; rn.value='';
+        body:JSON.stringify({pw:pw.value,list:lst,title,note})});
+      // 로컬 즉시 반영 (🕗 대기)
+      if(lst==='영화'){ if(!DATA.some(m=>m.t===title))DATA.unshift({t:title,desc:note,w:0,s:'user'}); }
+      else if(!ITEMS.some(x=>x.l===lst&&x.t===title)){ ITEMS.unshift({l:lst,t:title,note,st:'want',s:'user',c:nowMon()+'-'+String(new Date().getDate()).padStart(2,'0')}); }
+      draw();
+      rmsg.textContent='✅ 등록됨.'; rt.value=''; rn.value='';
     }catch(_){ rmsg.textContent='❌ 전송 실패. 네트워크 확인.'; }
   };
 }
