@@ -57,6 +57,9 @@ h1{font-size:22px;margin:0 0 2px}
 .ott button.on{outline:2px solid var(--fg);outline-offset:2px;opacity:1}
 .ott img{width:42px;height:42px;display:block}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+#list.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
+#list.grid .card{margin-bottom:0;padding:12px}
+#list.grid .done-btn{margin-top:8px;width:100%}
 .card.seen{opacity:.62}
 .t{font-weight:600;font-size:17px}
 .t .chk{color:var(--seen);margin-right:5px}
@@ -127,6 +130,7 @@ function paint(){
   document.querySelector('[data-m="done"]').textContent=d;
   h1.textContent=curList==='영화'?'🎬 movie':`🍽 ${curList}`;
   ottbar.hidden=curList!=='영화';
+  list.className=curList==='영화'?'':'grid';  // 비영화 목록은 그리드(음식명 짧음)
   [...lbar.children].forEach(b=>b.classList.toggle('on',b.dataset.l===curList));
   document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('on',b.dataset.m===mode));
   const p=new URLSearchParams();p.set('list',curList);p.set('tab',mode);
