@@ -149,7 +149,7 @@ if(GAS){
 </div></body></html>"""
 
 
-GAS_URL = ""  # ponytail: GAS 웹앱 /exec URL. 비면 등록폼 숨김. 배포 후 여기 채우고 html 재생성.
+GAS_URL = "https://script.google.com/macros/s/AKfycbwJ27_GZz3O8LH8dMm-1PnGLX9o-bO7MexEaYnRhO0PKEd-_jy92IDnKp_vcMr5QCs8pw/exec"  # ponytail: GAS 웹앱 /exec URL. 비면 등록폼 숨김.
 
 
 def render(con):
