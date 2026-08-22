@@ -117,8 +117,8 @@ $("dump").onclick=()=>{
   const d=ROWS.filter(r=>local.has(r.bid));
   if(!d.length)return alert("완료한 게 없다.");
   const day=new Date().toLocaleDateString("sv-SE");  // 로컬 기준 YYYY-MM-DD
-  navigator.clipboard.writeText(d.map(r=>`${day}  ${r.home}  ${r.who}  ?`).join("
-"))
+  const lines=d.map(r=>`${day}  ${r.home}  ${r.who}  ?`);
+  navigator.clipboard.writeText(lines.join(String.fromCharCode(10)))
     .then(()=>alert(d.length+"명 복사됨. 클로드한테 붙여넣어라."),
           ()=>alert("복사 실패. 길게 눌러 직접 선택해라."));
 };
