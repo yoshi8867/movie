@@ -41,6 +41,7 @@
 <div class="sub">좋아요 3개 + 댓글 1개 → 서이추 → <b>완료</b>. 하루 5~7명.</div>
 <div class="tabs" id="tabs"></div>
 <div id="list"></div>
+<div class="row" style="margin:20px 0"><button id="dump">완료 목록 복사</button></div>
 <footer id="foot"></footer>
 
 <script>
@@ -110,6 +111,17 @@ $("list").addEventListener("click",e=>{
 });
 
 draw();
+
+// 시트가 죽어 있어도 회수는 되게. 폰에 쌓인 완료분을 .commented.txt 형식으로 뱉는다.
+$("dump").onclick=()=>{
+  const d=ROWS.filter(r=>local.has(r.bid));
+  if(!d.length)return alert("완료한 게 없다.");
+  const day=new Date().toLocaleDateString("sv-SE");  // 로컬 기준 YYYY-MM-DD
+  navigator.clipboard.writeText(d.map(r=>`${day}  ${r.home}  ${r.who}  ?`).join("
+"))
+    .then(()=>alert(d.length+"명 복사됨. 클로드한테 붙여넣어라."),
+          ()=>alert("복사 실패. 길게 눌러 직접 선택해라."));
+};
 
 // 다른 기기에서 누른 것도 보이게 시트를 겹쳐 읽는다. JSONP로 CORS 우회.
 if(GAS){
