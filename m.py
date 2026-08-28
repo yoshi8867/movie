@@ -59,15 +59,16 @@ h1{font-size:22px;margin:0 0 2px}
 .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px 16px;margin-bottom:10px}
 #list.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px}
 #list.grid .card{margin-bottom:0;padding:12px}
-#list.grid .done-btn{margin-top:8px;width:100%}
+#list.grid .done-btn,#list.grid .undo-btn{margin-top:8px;width:100%}
 .card.seen{opacity:.62}
 .t{font-weight:600;font-size:17px}
 .t .chk{color:var(--seen);margin-right:5px}
 .sub{color:var(--dim);font-size:13px;margin:3px 0 0}
 .mon{color:var(--seen)}
 .pend{color:#e0a000;font-weight:600}
-.done-btn{margin-top:10px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:13px;cursor:pointer}
-.done-btn:hover{background:var(--line)}
+.done-btn,.undo-btn{margin-top:10px;padding:6px 12px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--fg);font-size:13px;cursor:pointer}
+.undo-btn{color:var(--dim)}
+.done-btn:hover,.undo-btn:hover{background:var(--line)}
 .reg{margin:0 0 16px}
 .reg summary{cursor:pointer;color:var(--dim);font-size:14px;user-select:none}
 .reg form{display:flex;flex-direction:column;gap:8px;margin-top:10px;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:14px}
@@ -141,7 +142,7 @@ function draw(){
   const kw=q.value.trim().toLowerCase();
   if(curList==='영화'){
     const rows=DATA.filter(m=>{
-      if(mode==='want'&&m.w)return false;
+      if(mode==='want'&&m.w&&!justDone.has(key2('영화',m.t)))return false;
       if(mode==='done'&&!m.w)return false;
       if(kw&&!((m.t+' '+(m.d||'')+' '+(m.o||'')+' '+(m.desc||'')).toLowerCase().includes(kw)))return false;
       return true;});
@@ -153,13 +154,13 @@ function draw(){
         <div class="sub">${esc(m.y||'?')} · ${esc(m.d||'?')} · ${esc(m.o||'-')}${m.w&&m.mon?` · <span class="mon">👁 ${esc(m.mon)}</span>`:''}</div>
         ${m.desc?`<div class="desc">${esc(m.desc)}</div>`:''}
         ${m.u?`<a href="${esc(m.u)}" target="_blank" rel="noopener">${esc(m.u)}</a>`:''}
-        ${!m.w&&GAS?`<div><button class="done-btn" data-t="${esc(m.t)}">✅ 봤다</button></div>`:''}
+        ${GAS?(m.w?`<div><button class="undo-btn" data-t="${esc(m.t)}">↩ 취소</button></div>`:`<div><button class="done-btn" data-t="${esc(m.t)}">✅ 봤다</button></div>`):''}
       </div>`).join(''):'<div class="empty">해당 없음</div>';
   }else{
     const ic=lab(curList)[2], all=ITEMS.filter(x=>x.l===curList);
     const rows=all.filter(x=>{
       const dn=x.st==='done';
-      if(mode==='want'&&dn)return false;
+      if(mode==='want'&&dn&&!justDone.has(key2(curList,x.t)))return false;
       if(mode==='done'&&!dn)return false;
       if(kw&&!((x.t+' '+(x.note||'')).toLowerCase().includes(kw)))return false;
       return true;});
@@ -170,7 +171,7 @@ function draw(){
         <div class="t">${dn?'<span class="chk">✓</span>':''}${esc(x.t)}${x.s==='user'?' <span class="pend">🕗 대기</span>':''}</div>
         ${x.note?`<div class="desc">${esc(x.note)}</div>`:''}
         <div class="sub">${rd?`등록 ${rd}`:''}${dn&&x.mon?`${rd?' · ':''}<span class="mon">${ic} ${esc(x.mon)}</span>`:''}</div>
-        ${!dn&&GAS?`<button class="done-btn" data-t="${esc(x.t)}">✅ ${curList==='와먹'?'먹었다':'완료'}</button>`:''}
+        ${GAS?(dn?`<button class="undo-btn" data-t="${esc(x.t)}">↩ 취소</button>`:`<button class="done-btn" data-t="${esc(x.t)}">✅ ${curList==='와먹'?'먹었다':'완료'}</button>`):''}
       </div>`;}).join(''):'<div class="empty">해당 없음</div>';
   }
 }
@@ -188,24 +189,39 @@ function localDone(lst,title){
   if(lst==='영화'){const m=DATA.find(m=>m.t===title);if(m){m.w=1;m.mon=m.mon||nowMon();}}
   else{const x=ITEMS.find(x=>x.l===lst&&x.t===title);if(x){x.st='done';x.mon=x.mon||nowMon();}}
 }
-// 이 기기에서 누른 완료는 localStorage에 남겨, POST가 실패하거나 아직 DB 반영 전이어도 새로고침 후 유지.
+function localUndone(lst,title){
+  if(lst==='영화'){const m=DATA.find(m=>m.t===title);if(m){m.w=0;m.mon='';}}
+  else{const x=ITEMS.find(x=>x.l===lst&&x.t===title);if(x){x.st='want';x.mon='';}}
+}
+// 이 기기에서 누른 완료/취소는 localStorage에 남겨, POST 실패·DB 반영 전에도 새로고침 후 유지.
+const key2=(l,t)=>l+'\t'+t;
 const doneSet=new Set(JSON.parse(localStorage.getItem('done')||'[]'));
-function markDoneLocal(lst,title){doneSet.add(lst+'\t'+title);localStorage.setItem('done',JSON.stringify([...doneSet]));}
+const undoneSet=new Set(JSON.parse(localStorage.getItem('undone')||'[]'));
+const justDone=new Set();  // 이번 화면에서 방금 완료 — 목록에서 바로 빼지 않고 취소 버튼 노출
+const saveSets=()=>{localStorage.setItem('done',JSON.stringify([...doneSet]));localStorage.setItem('undone',JSON.stringify([...undoneSet]));};
+function markDoneLocal(lst,title){const k=key2(lst,title);doneSet.add(k);undoneSet.delete(k);justDone.add(k);saveSets();}
+function markUndoneLocal(lst,title){const k=key2(lst,title);undoneSet.add(k);doneSet.delete(k);justDone.delete(k);saveSets();}
 doneSet.forEach(k=>{const i=k.indexOf('\t');localDone(k.slice(0,i),k.slice(i+1));});
+undoneSet.forEach(k=>{const i=k.indexOf('\t');localUndone(k.slice(0,i),k.slice(i+1));});
 list.addEventListener('click',e=>{
-  const b=e.target.closest('.done-btn'); if(!b||!GAS)return;
+  const d=e.target.closest('.done-btn'), u=e.target.closest('.undo-btn');
+  if((!d&&!u)||!GAS)return;
   const pw=localStorage.getItem('pw')||prompt('비밀번호'); if(!pw)return;
   localStorage.setItem('pw',pw);
+  const t=(d||u).dataset.t, act=d?'done':'undone';
   fetch(GAS,{method:'POST',mode:'no-cors',headers:{'Content-Type':'text/plain;charset=utf-8'},
-    body:JSON.stringify({pw,action:'done',list:curList,title:b.dataset.t})});
-  localDone(curList,b.dataset.t); markDoneLocal(curList,b.dataset.t); draw();
+    body:JSON.stringify({pw,action:act,list:curList,title:t})});
+  if(d){localDone(curList,t); markDoneLocal(curList,t);}
+  else{localUndone(curList,t); markUndoneLocal(curList,t);}
+  draw();
 });
 paint();
 // pending 실시간 오버레이 — 다른 기기/새로고침에서도 최신 상태 보이게 GAS에서 읽어와 겹침.
 if(GAS){
   window.__ov=rows=>{
     (rows||[]).forEach(r=>{
-      if(r.act==='완료'){ localDone(r.list,r.title); }
+      if(r.act==='완료'){ if(!undoneSet.has(key2(r.list,r.title)))localDone(r.list,r.title); }
+      else if(r.act==='취소'){ localUndone(r.list,r.title); }
       else if(r.list==='영화'){ if(!DATA.some(m=>m.t===r.title))DATA.unshift({t:r.title,desc:r.note,w:0,s:'user'}); }
       else if(!ITEMS.some(x=>x.l===r.list&&x.t===r.title)){ ITEMS.unshift({l:r.list,t:r.title,note:r.note,st:'want',s:'user',c:r.ts}); }
     });

@@ -16,7 +16,7 @@ function doPost(e) {
     if (d.kind === 'seoichu') return seoichuPost(d);
     const title = (d.title || '').toString().trim();
     if (!title) return out('no title');
-    const action = (d.action === 'done') ? '완료' : '추가';
+    const action = (d.action === 'done') ? '완료' : (d.action === 'undone') ? '취소' : '추가';
     const list = (d.list || '영화').toString().trim();
     const ss = SpreadsheetApp.openById(SHEET_ID);
     let sh = ss.getSheetByName('pending');
