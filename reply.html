@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="ko"><head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>이웃 새 글 댓글</title>
+<style>
+ :root{--bd:#e2e2e2;--mut:#888}
+ *{box-sizing:border-box}
+ body{font:16px/1.6 system-ui,-apple-system,"맑은 고딕",sans-serif;margin:0;padding:12px;
+      max-width:760px;margin-inline:auto;color:#222;background:#fff}
+ h1{font-size:19px;margin:0 0 2px}
+ .sub{color:var(--mut);font-size:13px;margin-bottom:12px}
+ .card{border:1px solid var(--bd);border-radius:12px;padding:13px 14px;margin-bottom:11px}
+ .card.done{opacity:.32}
+ .top{display:flex;align-items:baseline;gap:7px;flex-wrap:wrap}
+ .who a{color:#1a7f3c;text-decoration:none;font-weight:600}
+ .why{font-size:12px;color:#a06000;background:#fff8e6;border-radius:4px;padding:2px 7px}
+ .date{color:#bbb;font-size:12px;margin-left:auto}
+ .title{display:block;margin:7px 0 9px;color:#1c4fd8;text-decoration:none;font-size:14px}
+ .lbl{font-size:11px;color:#999;margin:9px 0 3px}
+ /* 후보는 눌러서 고른다. 버튼을 따로 두면 폰에서 손이 두 번 간다 */
+ .cm{background:#fafafa;border-left:3px solid #d5d5d5;padding:10px 11px;margin-bottom:6px;
+     border-radius:0 6px 6px 0;font-size:14px;cursor:pointer}
+ .cm:active{background:#eee}
+ .cm.pick{border-left-color:#1a7f3c;background:#f2f9f4}
+ .row{display:flex;gap:7px;margin-top:12px;flex-wrap:wrap}
+ button{font:inherit;font-size:14px;padding:9px 14px;border:1px solid #ccc;background:#fff;
+        border-radius:8px;cursor:pointer;flex:1;min-width:96px}
+ button:active{background:#eee}
+ .fin{background:#1a7f3c;color:#fff;border-color:#1a7f3c;font-weight:600}
+ .card.done .fin{background:#fff;color:#1a7f3c}
+ .empty{color:var(--mut);text-align:center;padding:40px 0}
+ footer{color:var(--mut);font-size:12px;margin:22px 0 40px;text-align:center}
+</style></head><body>
+
+<h1>이웃 새 글 <span id="left">10</span>건</h1>
+<div class="sub">후보를 <b>탭하면 복사</b>된다. 글 열고 → 좋아요 → 붙여넣기 → <b>완료</b>.</div>
+<div id="list"></div>
+<div class="row" style="margin:20px 0"><button id="dump">완료 목록 복사</button></div>
+<footer id="foot"></footer>
+
+<script>
+const ROWS=[{"bid": "all_of_my_life_26", "logNo": "224408623160", "who": "하루의 맛집탐방과 일상", "title": "경기도 산후조리비 50만원 폐지｜산후도우미 라형까지 실제 손해액 비교", "link": "https://blog.naver.com/all_of_my_life_26/224408623160", "date": "2026-09-11", "categ": "2. Pregnant Life", "cms": ["9월 30일이면 얼마 안 남았네요 급해졌습니다", "50만원인 줄 알았는데 라형까지면 차이가 크군요", "표로 정리해주셔서 한눈에 들어옵니다"]}, {"bid": "dito_mato", "logNo": "224408358436", "who": "토마토 농장", "title": "합정 따로집 | 한식 퓨전 주점 • 안주 맛집 • 다양한 전통주와 막걸리를 즐길 수 있는 곳", "link": "https://blog.naver.com/dito_mato/224408358436", "date": "2026-09-11", "categ": "맛집 • 카페", "cms": ["7번 출구 바로 앞이면 접근성이 최고네요", "전통주 종류 많은 곳 찾고 있었는데 반갑습니다", "재방문 의사 완전 있다고 하시니 신뢰가 가네요"]}, {"bid": "evemom_2", "logNo": "224404874198", "who": "이브맘의 육아일기", "title": "서울아산병원｜제왕절개 출산 후기③｜2박3일 퇴원·병원비, 실밥제거부터 신생아검사까지", "link": "https://blog.naver.com/evemom_2/224404874198", "date": "2026-09-11", "categ": "임신 기록", "cms": ["2박 3일 만에 퇴원하신 거 대단하시네요", "통증 남아있는데 결정하기 쉽지 않으셨겠어요", "저희도 10월이라 이 시리즈 정주행 중입니다"]}, {"bid": "yul081620", "logNo": "224408386567", "who": "서울 고양이 일상 ≽^• ˕ • ྀི≼", "title": "[합정] 합정역 고기집 정육도｜룸에서 즐긴 가족모임 한돈세트 솔직 후기 , 룸부터 야장까지 합정 단체모임 추천", "link": "https://blog.naver.com/yul081620/224408386567", "date": "2026-09-11", "categ": "서울", "cms": ["합정에 잔디밭 야장 있는 고깃집이 있었군요", "가족 생일이 다 가을이면 9월이 참 바쁘시겠어요 ㅎㅎ", "마포 사는데 여긴 몰랐네요 다음에 가봐야겠습니다"]}, {"bid": "wldp9183", "logNo": "224407901607", "who": "맛있는게 세상을 구한다", "title": "[충남/천안]소식자도 완뚝가능 1티어 해장국맛집 성환뚝배기해장국 내돈내산 솔직후기", "link": "https://blog.naver.com/wldp9183/224407901607", "date": "2026-09-11", "categ": "맛집", "cms": ["대문 보고 제대로 찾아왔다 싶으신 게 느껴집니다 ㅋㅋ", "3대째 50년이면 믿고 가는 거죠", "옛날 가정집 개조한 좌식이면 분위기도 좋았겠어요"]}, {"bid": "mingkymom_", "logNo": "224408506390", "who": "김네잎 결혼·임신·육아 기록", "title": "혼주한복 운선제 청담점 후기 터지고 받은 질문 총정리", "link": "https://blog.naver.com/mingkymom_/224408506390", "date": "2026-09-11", "categ": "결혼", "cms": ["질문이 몰릴 만한 글이었죠 정리 감사합니다", "가격대 차이가 원단 등급이었군요", "협찬 아니라고 밝혀주셔서 더 믿음이 갑니다"]}, {"bid": "alsdn811n", "logNo": "224408467835", "who": "n유닝의 소확행♡", "title": "합정역 태국 음식점 : 낀낀", "link": "https://blog.naver.com/alsdn811n/224408467835", "date": "2026-09-11", "categ": "먹거리 탐방", "cms": ["합정에 태국집 생긴 거 몰랐네요", "오픈형 주방이면 확실히 믿음이 가죠", "합정 자주 가는데 여긴 꼭 가봐야겠어요"]}, {"bid": "tini52525", "logNo": "224407477720", "who": "Good Dream(*°▽°*)", "title": "아기 모기 물렸을때 대처법과 가려움 진정에 도움주는 연고 고민된다면", "link": "https://blog.naver.com/tini52525/224407477720", "date": "2026-09-10", "categ": "셋찌육아일기★", "cms": ["눈 주위를 물렸으면 더 신경 쓰이셨겠어요", "9월인데 놀이터에 모기가 아직 많군요", "이불에 얼굴 부비는 거 보면 마음 아프시겠습니다"]}, {"bid": "mallang_gomdol", "logNo": "224406342762", "who": "말랑곰돌의 일상", "title": "목포 한사랑병원 제왕절개 6박 7일 병동 입원 후기 및 비용", "link": "https://blog.naver.com/mallang_gomdol/224406342762", "date": "2026-09-09", "categ": "결혼/임신", "cms": ["2시간마다 체크하면 잠은 거의 못 주무셨겠어요", "중문이 없으면 복도 소리가 다 들리는군요", "회복실에서 3시간이면 꽤 길게 기다리셨네요"]}, {"bid": "sso93", "logNo": "224404183513", "who": "연남동 상욱이", "title": "[연남 맛집] 헬로 인디아 맛있는 방문 후기!", "link": "https://blog.naver.com/sso93/224404183513", "date": "2026-09-07", "categ": "음식", "cms": ["인도커리는 직접 가서 먹어야 한다는 말 공감합니다", "연남 지나면서 궁금했는데 후기 잘 봤어요", "저녁에 사람 많은 거 보면 맛집 맞네요"]}], GAS="https://script.google.com/macros/s/AKfycbwJ27_GZz3O8LH8dMm-1PnGLX9o-bO7MexEaYnRhO0PKEd-_jy92IDnKp_vcMr5QCs8pw/exec";
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
+const keyOf=r=>r.bid+"/"+r.logNo;
+
+// 완료 표시는 로컬에 먼저 남긴다. 시트가 느리거나 실패해도 화면은 정확하게.
+const LS="reply_done";
+const local=new Set(JSON.parse(localStorage.getItem(LS)||"[]"));
+const save=()=>localStorage.setItem(LS,JSON.stringify([...local]));
+
+function draw(){
+  $("list").innerHTML = ROWS.length ? ROWS.map(r=>{
+    const k=keyOf(r), d=local.has(k);
+    return `<div class="card${d?" done":""}" data-key="${k}">
+      <div class="top">
+        <span class="who"><a href="https://blog.naver.com/${r.bid}" target="_blank" rel="noopener">${esc(r.who)}</a></span>
+        ${r.categ?`<span class="why">${esc(r.categ)}</span>`:""}
+        <span class="date">${esc(r.date)}</span>
+      </div>
+      <a class="title" href="${r.link}" target="_blank" rel="noopener">${esc(r.title)}</a>
+      <div class="lbl">후보 — 탭하면 복사</div>
+      ${r.cms.map(c=>`<div class="cm" data-cm>${esc(c)}</div>`).join("")}
+      <div class="row">
+        <button class="fin" data-fin>${d?"완료됨":"완료"}</button>
+      </div></div>`;
+  }).join("") : `<div class="empty">새 글이 없다.</div>`;
+  $("left").textContent = ROWS.filter(r=>!local.has(keyOf(r))).length;
+}
+
+$("list").addEventListener("click",e=>{
+  const card=e.target.closest(".card"); if(!card)return;
+  const key=card.dataset.key;
+  const cm=e.target.closest("[data-cm]");
+  if(cm){
+    navigator.clipboard.writeText(cm.innerText).then(()=>{
+      // 어느 걸 골랐는지 남는다. 붙여넣다 놓쳐도 다시 찾을 필요가 없다
+      card.querySelectorAll("[data-cm]").forEach(x=>x.classList.remove("pick"));
+      cm.classList.add("pick");
+    });
+    return;
+  }
+  if(!e.target.closest("[data-fin]"))return;
+  if(local.has(key)){                       // 잘못 눌렀을 때 되돌리기
+    if(!confirm("완료를 취소할까?"))return;
+    local.delete(key); save(); draw(); return;
+  }
+  local.add(key); save(); draw();
+  if(!GAS)return;
+  const r=ROWS.find(x=>keyOf(x)===key);
+  const pw=localStorage.getItem("pw")||prompt("비밀번호"); if(!pw)return;
+  localStorage.setItem("pw",pw);
+  // no-cors + text/plain — preflight를 피한다. 응답은 못 읽으니 화면은 이미 반영해뒀다.
+  fetch(GAS,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},
+    body:JSON.stringify({pw,kind:"comment",bid:r.bid,logNo:r.logNo,who:r.who,title:r.title})})
+    .catch(()=>{ $("foot").textContent="전송 실패 — 네트워크 확인 후 다시 눌러라."; });
+});
+
+draw();
+
+// 시트가 죽어 있어도 회수는 되게. 폰에 쌓인 완료분을 .replied.txt 형식으로 뱉는다.
+$("dump").onclick=()=>{
+  const d=ROWS.filter(r=>local.has(keyOf(r)));
+  if(!d.length)return alert("완료한 게 없다.");
+  const day=new Date().toLocaleDateString("sv-SE");  // 로컬 기준 YYYY-MM-DD
+  const lines=d.map(r=>`${day}  ${r.link}  ${r.who}  ${r.title}`);
+  navigator.clipboard.writeText(lines.join(String.fromCharCode(10)))
+    .then(()=>alert(d.length+"건 복사됨. 클로드한테 붙여넣어라."),
+          ()=>alert("복사 실패. 길게 눌러 직접 선택해라."));
+};
+
+// 다른 기기에서 누른 것도 보이게 시트를 겹쳐 읽는다. JSONP로 CORS 우회.
+if(GAS){
+  window.__ov=rows=>{
+    (rows||[]).forEach(r=>{ if(r.bid&&r.logNo) local.add(r.bid+"/"+r.logNo); });
+    save(); draw();
+    $("foot").textContent="시트 동기화됨 · "+local.size+"건 완료";
+  };
+  const s=document.createElement("script");
+  s.src=GAS+"?kind=comment&callback=__ov";
+  s.onerror=()=>{$("foot").textContent="시트를 못 읽었다. 완료는 이 기기에만 남는다.";};
+  document.body.appendChild(s);
+}
+</script></body></html>

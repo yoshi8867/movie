@@ -4,6 +4,7 @@
 // 비번은 여기(서버)에서 검사하므로 페이지 소스로 뚫리지 않음.
 //
 // kind:'seoichu'가 오면 서이추 완료 기록으로 보고 seoichu 탭에 append한다.
+// kind:'comment'가 오면 이웃 새 글 댓글 기록으로 보고 comment 탭에 append한다.
 // 고칠 때는 배포 → 배포 관리 → 편집 → 버전: 새 버전 (URL이 안 바뀐다. '새 배포'는 URL이 바뀜)
 
 const SHEET_ID = '1yuTP7dKqije5SDAgTp7A17lMBt5H4VjaxNwdDiE81pw';
@@ -14,6 +15,7 @@ function doPost(e) {
     const d = JSON.parse(e.postData.contents);
     if (String(d.pw) !== PW) return out('bad password');
     if (d.kind === 'seoichu') return seoichuPost(d);
+    if (d.kind === 'comment') return commentPost(d);
     const title = (d.title || '').toString().trim();
     if (!title) return out('no title');
     const action = (d.action === 'done') ? '완료' : (d.action === 'undone') ? '취소' : '추가';
@@ -40,6 +42,7 @@ function doGet(e) {
   const p = (e && e.parameter) || {};
   const cb = p.callback || 'cb';
   if (p.kind === 'seoichu') return jsonp(cb, seoichuRows());
+  if (p.kind === 'comment') return jsonp(cb, commentRows());
   const sh = SpreadsheetApp.openById(SHEET_ID).getSheetByName('pending');
   let rows = [];
   if (sh && sh.getLastRow() > 1) {
@@ -78,6 +81,39 @@ function seoichuRows() {
     return {
       ts: (r[0] instanceof Date) ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss') : String(r[0]),
       bid: String(r[1]), who: String(r[2]), grade: String(r[3])
+    };
+  });
+}
+
+// ── 이웃 새 글 댓글 ──────────────────────────────────────
+// 서이추와 달리 사람이 아니라 '글' 단위다. 같은 이웃의 다음 글에는 또 달아야 하니
+// 블로그ID와 logNo를 같이 남긴다. 중복은 읽는 쪽(tools/reply.py)에서 거른다.
+
+function commentSheet() {
+  const ss = SpreadsheetApp.openById(SHEET_ID);
+  let sh = ss.getSheetByName('comment');
+  if (!sh) { sh = ss.insertSheet('comment'); sh.appendRow(['시각', '블로그ID', 'logNo', '닉네임', '제목']); }
+  return sh;
+}
+
+function commentPost(d) {
+  const bid = (d.bid || '').toString().trim();
+  const logNo = (d.logNo || '').toString().trim();
+  if (!bid || !logNo) return out('no bid/logNo');
+  commentSheet().appendRow([new Date(), bid, logNo, (d.who || '').toString(), (d.title || '').toString()]);
+  return out('ok');
+}
+
+function commentRows() {
+  const sh = commentSheet();
+  if (sh.getLastRow() < 2) return [];
+  return sh.getRange(2, 1, sh.getLastRow() - 1, 5).getValues().map(function (r) {
+    return {
+      ts: (r[0] instanceof Date) ? Utilities.formatDate(r[0], 'Asia/Seoul', 'yyyy-MM-dd HH:mm:ss') : String(r[0]),
+      bid: String(r[1]),
+      // logNo는 12자리라 시트가 숫자로 저장한다. String()이면 지수 표기가 나올 수 있다
+      logNo: (typeof r[2] === 'number') ? r[2].toFixed(0) : String(r[2]),
+      who: String(r[3]), title: String(r[4])
     };
   });
 }
