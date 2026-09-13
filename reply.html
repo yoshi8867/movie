@@ -55,7 +55,8 @@ function draw(){
     const k=keyOf(r), d=local.has(k);
     return `<div class="card${d?" done":""}" data-key="${k}">
       <div class="top">
-        <span class="who"><a href="https://blog.naver.com/${r.bid}" target="_blank" rel="noopener">${esc(r.who)}</a></span>
+        <!-- 닉네임도 글로 보낸다. 블로그 홈으로 보내면 최신 글을 다시 찾아 눌러야 한다 -->
+        <span class="who"><a href="${r.link}" target="_blank" rel="noopener">${esc(r.who)}</a></span>
         ${r.categ?`<span class="why">${esc(r.categ)}</span>`:""}
         <span class="date">${esc(r.date)}</span>
       </div>
