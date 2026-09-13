@@ -33,14 +33,14 @@
  footer{color:var(--mut);font-size:12px;margin:22px 0 40px;text-align:center}
 </style></head><body>
 
-<h1>이웃 새 글 <span id="left">2</span>건</h1>
+<h1>이웃 새 글 <span id="left">0</span>건</h1>
 <div class="sub">후보를 <b>탭하면 복사</b>된다. 글 열고 → 좋아요 → 붙여넣기 → <b>완료</b>.</div>
 <div id="list"></div>
 <div class="row" style="margin:20px 0"><button id="dump">완료 목록 복사</button></div>
 <footer id="foot"></footer>
 
 <script>
-const ROWS=[{"bid": "cocomemberme", "logNo": "224410060142", "who": "망고의탐험일지", "title": "라이라이", "link": "https://blog.naver.com/cocomemberme/224410060142", "date": "2026-09-13", "categ": "서울", "cms": ["30분 웨이팅하고 들어가신 보람이 있었네요", "칠리가지 튀김력이 장난 아니라는 말에 꽂혔습니다", "야채 편식하던 사람을 넘긴 가지면 진짜겠네요"]}, {"bid": "bo-ram_", "logNo": "224409101748", "who": "쀼로그 ෆ", "title": "임신 16주차 2차 기형아검사 _ 초음파 성장기록과 CA-125 재검사 결과", "link": "https://blog.naver.com/bo-ram_/224409101748", "date": "2026-09-12", "categ": "Pregnancy Diary", "cms": ["딱풀이라는 태명이 너무 귀엽네요", "21주에 16주를 꺼내 적으시는 것도 좋은 기록이겠어요", "척추뼈 보고 도치맘 되셨다는 게 웃기고 좋습니다"]}], GAS="https://script.google.com/macros/s/AKfycbwJ27_GZz3O8LH8dMm-1PnGLX9o-bO7MexEaYnRhO0PKEd-_jy92IDnKp_vcMr5QCs8pw/exec";
+const ROWS=[], GAS="https://script.google.com/macros/s/AKfycbwJ27_GZz3O8LH8dMm-1PnGLX9o-bO7MexEaYnRhO0PKEd-_jy92IDnKp_vcMr5QCs8pw/exec";
 const $=id=>document.getElementById(id);
 const esc=s=>String(s||"").replace(/&/g,"&amp;").replace(/</g,"&lt;");
 const keyOf=r=>r.bid+"/"+r.logNo;
