@@ -220,10 +220,10 @@ paint();
 if(GAS){
   window.__ov=rows=>{
     (rows||[]).forEach(r=>{
+      // 완료/취소만 즉시 반영. '추가(대기)' 주입은 뺀다 — 등록분은 처리 후 DB로 뜨고,
+      // pending의 미삭제·오발신(댓글 세션 등) 행이 가짜 카드로 새는 걸 막는다.
       if(r.act==='완료'){ if(!undoneSet.has(key2(r.list,r.title)))localDone(r.list,r.title); }
       else if(r.act==='취소'){ localUndone(r.list,r.title); }
-      else if(r.list==='영화'){ if(!DATA.some(m=>m.t===r.title))DATA.unshift({t:r.title,desc:r.note,w:0,s:'user'}); }
-      else if(!ITEMS.some(x=>x.l===r.list&&x.t===r.title)){ ITEMS.unshift({l:r.list,t:r.title,note:r.note,st:'want',s:'user',c:r.ts}); }
     });
     draw();
   };
