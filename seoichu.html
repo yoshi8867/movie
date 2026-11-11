@@ -110,11 +110,13 @@ $("list").addEventListener("click",e=>{
     if(!confirm("완료를 취소할까?"))return;
     local.delete(bid); save(); draw(); return;
   }
+  // 비밀번호를 먼저 받는다. 취소하면 화면에도 완료로 안 찍는다. reply.py와 같은 이유.
+  const pw=GAS?(localStorage.getItem("pw")||prompt("비밀번호")):"";
+  if(GAS&&!pw){ $("foot").textContent="비밀번호를 안 넣어서 기록하지 않았다. 다시 눌러라."; return; }
+  if(GAS)localStorage.setItem("pw",pw);
   local.add(bid); save(); draw();
   if(!GAS)return;
   const r=ROWS.find(x=>x.bid===bid);
-  const pw=localStorage.getItem("pw")||prompt("비밀번호"); if(!pw)return;
-  localStorage.setItem("pw",pw);
   // no-cors + text/plain — preflight를 피한다. 응답은 못 읽으니 화면은 이미 반영해뒀다.
   fetch(GAS,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},
     body:JSON.stringify({pw,kind:"seoichu",bid,who:r.who,grade:r.g})})
